@@ -24,6 +24,7 @@ from PyQt5.QtWidgets import (
         QSizePolicy)
 
 
+# These functions are from: https://krita-artists.org/t/hot-to-get-the-mouse-position-in-a-plugin/41012/ by AkiR
 def get_q_view(view):
     window = view.window()
     q_window = window.qwindow()
