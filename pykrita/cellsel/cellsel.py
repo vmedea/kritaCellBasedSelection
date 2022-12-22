@@ -108,13 +108,13 @@ class MouseInterceptor(QWidget):
         
         return (xpos // self.cell_w, ypos // self.cell_h)
         
-    def set_cell(self, cell, newval):
+    def set_cell(self, cell, newval, replace=False):
         '''
         Select, unselect or toggle a cell.
         '''
         (cell_x, cell_y) = cell
         sel = self.document.selection()
-        if sel is None:
+        if sel is None or replace:
             sel = Selection()
         
         if newval is None: # Get current value, for toggle.
@@ -137,13 +137,17 @@ class MouseInterceptor(QWidget):
         cell = self.pos_to_grid(pos)
         if cell is None:
             return
+        replace = False
         if button == Qt.LeftButton:
             value = 255
         elif button == Qt.RightButton:
             value = 0
+        elif button == Qt.MiddleButton:
+            value = 255
+            replace = True
         else:
             return
-        self.cur_cell_value = self.set_cell(cell, value)
+        self.cur_cell_value = self.set_cell(cell, value, replace)
         self.cur_cell = cell
         
     def input_release(self, pos, button):
