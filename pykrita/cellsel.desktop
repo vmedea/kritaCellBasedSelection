@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=cellsel
+X-Python-2-Compatible=false
+Name=Cell-based selection plugin
+Comment=Toggle selection on a grid-cell basis.
