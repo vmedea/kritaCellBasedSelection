@@ -129,7 +129,7 @@ class MouseInterceptor(QWidget):
         self.document.setSelection(sel)    
         return newval
         
-    def input_press(self, pos, mods):
+    def input_press(self, pos, button):
         '''
         Button is pressed.
         '''
@@ -137,19 +137,24 @@ class MouseInterceptor(QWidget):
         cell = self.pos_to_grid(pos)
         if cell is None:
             return
-        
-        self.cur_cell_value = self.set_cell(cell, None)
+        if button == Qt.LeftButton:
+            value = 255
+        elif button == Qt.RightButton:
+            value = 0
+        else:
+            return
+        self.cur_cell_value = self.set_cell(cell, value)
         self.cur_cell = cell
         
-    def input_release(self, pos, mods):
+    def input_release(self, pos, button):
         '''
         Button is released.
         '''
         self.cur_cell = None
 
-    def input_move(self, pos, mods):
+    def input_move(self, pos):
         '''
-        Allow "drawing" by keeping the button pressed.
+        Allow "drawing" current selection value by keeping the button pressed.
         '''
         if self.cur_cell is None:
             return
@@ -161,33 +166,33 @@ class MouseInterceptor(QWidget):
         self.cur_cell = cell
 
     def event(self, event):
-        if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+        if event.type() == QEvent.MouseButtonPress:
             #print('Mouse press event')
-            self.input_press(event.localPos(), event.modifiers())
+            self.input_press(event.localPos(), event.button())
             event.accept()
             return True
-        if event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
+        if event.type() == QEvent.MouseButtonRelease:
             #print('Mouse release event')
-            self.input_release(event.localPos(), event.modifiers())
+            self.input_release(event.localPos(), event.button())
             event.accept()
             return True
         if event.type() == QEvent.MouseMove:
             #print('Mouse move event')
-            self.input_move(event.localPos(), event.modifiers())
+            self.input_move(event.localPos())
             return False # Parent should see this, otherwise there's no feedback for position.
-        if event.type() == QEvent.TabletPress and event.button() == Qt.LeftButton:
+        if event.type() == QEvent.TabletPress:
             #print('Tablet press event')
-            self.input_press(event.pos(), event.modifiers())
+            self.input_press(event.pos(), event.button())
             event.accept()
             return True
-        if event.type() == QEvent.TabletRelease and event.button() == Qt.LeftButton:
+        if event.type() == QEvent.TabletRelease:
             #print('Tablet release event')
-            self.input_release(event.pos(), event.modifiers())
+            self.input_release(event.pos(), event.button())
             event.accept()
             return True
         if event.type() == QEvent.TabletMove:
             #print('Tablet move event')
-            self.input_move(event.pos(), event.modifiers())
+            self.input_move(event.pos())
             return True # Parent should see this, otherwise there's no feedback for position.
         
         return super().event(event)
