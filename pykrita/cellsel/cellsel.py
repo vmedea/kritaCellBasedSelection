@@ -226,7 +226,7 @@ class MyExtension(Extension):
         pass
         
     def createActions(self, window):
-        self.action = window.createAction("cellsel", "Cell-based selection", "tools/scripts")
+        self.action = window.createAction("cellsel", "Cell-based selection", "")
         self.action.setAutoRepeat(False)
         self.action.triggered.connect(self.handleAction)
         
