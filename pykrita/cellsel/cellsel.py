@@ -21,7 +21,8 @@ from PyQt5.QtWidgets import (
         QWidget,
         QMdiArea,
         QAbstractScrollArea,
-        QSizePolicy)
+        QSizePolicy,
+        QSpinBox)
 
 
 # These functions are from: https://krita-artists.org/t/hot-to-get-the-mouse-position-in-a-plugin/41012/ by AkiR
@@ -61,15 +62,29 @@ def get_transform(view):
     transform.scale(zoom, zoom)
     return transform
 
-# XXX: should use configured grid cell size
-cell_w = 32
-cell_h = 32
+# Use configured grid cell size
+def get_grid_settings(krita):
+    '''
+    There's no way to get at the grid settings directly, as far as I know.
+    Luckily, we can dig into the docker and extract values directly.
+    '''
+    for docker in krita.dockers():
+        if docker.metaObject().className() == "GridDockerDock":
+            widget = docker.widget()
+            hspacing = widget.findChild(QSpinBox, "intHSpacing")
+            vspacing = widget.findChild(QSpinBox, "intVSpacing")
+            if hspacing is not None and vspacing is not None:
+                return (hspacing.value(), vspacing.value())
+
+    return (32, 32) # Sane default
 
 class MouseInterceptor(QWidget):
-    def __init__(self, parent, view, document):
+    def __init__(self, parent, view, document, cell_size):
         super().__init__(parent)
         self.view = view
         self.document = document
+
+        (self.cell_w, self.cell_h) = cell_size
         
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setGeometry(0, 0, parent.width(), parent.height())
@@ -91,7 +106,7 @@ class MouseInterceptor(QWidget):
             # Out of bounds, nothing to do.
             return None
         
-        return (xpos // cell_w, ypos // cell_h)
+        return (xpos // self.cell_w, ypos // self.cell_h)
         
     def set_cell(self, cell, newval):
         '''
@@ -103,13 +118,13 @@ class MouseInterceptor(QWidget):
             sel = Selection()
         
         if newval is None: # Get current value, for toggle.
-            d = sel.pixelData(cell_x * cell_w, cell_y * cell_h, 1, 1)
+            d = sel.pixelData(cell_x * self.cell_w, cell_y * self.cell_h, 1, 1)
             if d[0][0]:
                 newval = 0
             else:
                 newval = 255
         
-        sel.select(cell_x * cell_w, cell_y * cell_h, cell_w, cell_h, newval)
+        sel.select(cell_x * self.cell_w, cell_y * self.cell_h, self.cell_w, self.cell_h, newval)
         
         self.document.setSelection(sel)    
         return newval
@@ -182,13 +197,14 @@ class KeyFilter(QObject):
     '''
     Key filter to detect action key release.
     '''
-    def __init__(self, action, q_window, q_canvas, view, document, parent=None):
+    def __init__(self, action, q_window, q_canvas, view, document, cell_size, parent=None):
         super().__init__(parent)
         self.action = action
         self.q_window = q_window
         self.q_canvas = q_canvas
         self.view = view
         self.document = document
+        self.cell_size = cell_size
 
     def eventFilter(self, obj, e):
         if e.type() == QEvent.KeyRelease:
@@ -203,7 +219,7 @@ class KeyFilter(QObject):
         '''
         print('Activate')
         # Install mouse interceptor.
-        self.i = MouseInterceptor(self.q_canvas, self.view, self.document)
+        self.i = MouseInterceptor(self.q_canvas, self.view, self.document, self.cell_size)
         self.i.show()
         
     def deactivate(self):
@@ -241,7 +257,9 @@ class MyExtension(Extension):
         window = app.activeWindow()
         q_window = window.qwindow()
 
-        self.fil = KeyFilter(self.action, q_window, q_canvas, view, document)
+        cell_size = get_grid_settings(app)
+
+        self.fil = KeyFilter(self.action, q_window, q_canvas, view, document, cell_size)
         self.fil.activate()
         q_window.installEventFilter(self.fil)
 
