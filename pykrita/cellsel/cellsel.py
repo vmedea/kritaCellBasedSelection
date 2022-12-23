@@ -214,6 +214,7 @@ class KeyFilter(QObject):
         self.view = view
         self.document = document
         self.cell_size = cell_size
+        self.i = None
 
     def eventFilter(self, obj, e):
         if e.type() == QEvent.KeyRelease:
@@ -226,7 +227,7 @@ class KeyFilter(QObject):
         '''
         Activate special selection mode.
         '''
-        print('Activate')
+        print('cellsel: Activate')
         # Install mouse interceptor.
         self.i = MouseInterceptor(self.q_canvas, self.view, self.document, self.cell_size)
         self.i.show()
@@ -235,18 +236,24 @@ class KeyFilter(QObject):
         '''
         Deactivate special selection mode.
         '''
-        print('Deactivate')
+        print('cellsel: Deactivate')
         
         # Remove the mouse interceptor widget.
         self.i.deleteLater()
+        self.i = None
 
         # Remove the event filter from the canvas too.        
         self.q_window.removeEventFilter(self)
+
+    @property
+    def is_active(self):
+        return self.i != None
 
 
 class MyExtension(Extension):
     def __init__(self, parent):
         super().__init__(parent)
+        self.fil = None
 
     def setup(self):
         pass
@@ -257,6 +264,13 @@ class MyExtension(Extension):
         self.action.triggered.connect(self.handleAction)
         
     def handleAction(self):
+        # If, for some reason, we didn't catch the key-up event, allow
+        # deactivation by invoking the action again.
+        if self.fil is not None and self.fil.is_active:
+            print('cellsel: Possible bug, action was stuck in active state.')
+            self.fil.deactivate()
+            return
+
         app = Krita.instance()
         view = app.activeWindow().activeView()
         document = view.document()
